@@ -10,6 +10,8 @@ Analysis of transposable elements (TEs) in *Deroceras laeve* (CZ assembly), inte
 | `piRNA_counts_matrix.per_ins.with_coords.tsv` | piRNA counts per TE insertion (juvenile + ovotestis replicates) |
 | `Deroceras_laeve_CZ.1.0.fasta` | Genome assembly (symlink) |
 | `data/blasting_transposase_unknown_tes/KAK7092566.1.fasta` | Transposase protein query (hAT superfamily) |
+| `data/blasting_transposase_unknown_tes/maverick_orf_protein.fasta` | Maverick transposase protein query |
+| `data/explore_pirna_cluster/piRNA_clusters_DL_CZ_fixed.sorted.bed` | piRNA cluster coordinates (267 clusters) |
 
 ## Workflow
 
@@ -17,40 +19,45 @@ Analysis of transposable elements (TEs) in *Deroceras laeve* (CZ assembly), inte
 RepeatMasker output
        │
        ▼
-20260516_cleaning_DL_yahs_all_pb_rm.R        ← merge piRNA counts, collapse overlapping insertions
+te_cleaning/20260516_cleaning_DL_yahs_all_pb_rm.R   ← merge piRNA counts, collapse overlapping insertions
        │
        ├──► DL_yahs_all_pb_final.fasta.out.smallrna_annotated.tsv
        │
-       ├──► 20260516_size_distribution_repsize.R          ← size distribution plots per DNA TE family
+       ├──► te_cleaning/20260516_size_distribution_repsize.R     ← size distribution plots per DNA TE family
        │
-       └──► 20260517_rm_orf_finding.R                     ← longest ORF per element (all classes)
+       └──► te_cleaning/20260517_rm_orf_finding.R                ← longest ORF per element (all classes)
                    │
                    └──► ..._with_orfs.tsv
                                │
-                   ┌───────────┴──────────────────────────┐
-                   ▼                                        ▼
-       data/blasting_transposase_unknown_tes/      20260517_table_clean_preparation.R
-       run_blastx.sh  (BLASTx)           (DNA transposon summary tables)
-                   │
-                   ▼
-       20260517_blasting_transposase_unknown_tes.R  ← parse BLAST results
-                   │
-                   ▼
-       20260517_3_table_clean_preparation_unknowns_dna.R   ← unknown elements with transposase hits (DNA transposon from unknown repeats summary tables)
-       20260517_3_table_clean_preparation_other_classes.R  ← other TE classes (in progress)
+             ┌─────────────────┼──────────────────────────────┐
+             ▼                 ▼                               ▼
+      blast/run_blastx.sh   blast/run_blastx_maverick.sh    te_cleaning/20260517_table_clean_preparation.R
+      (KAK7092566.1)        (Maverick ORF protein)          (DNA transposon summary tables, in progress)
+             │                 │
+             └────────┬────────┘
+                      ▼
+      te_cleaning/20260517_blasting_transposase_unknown_tes.R  ← parse BLAST results
+                      │
+                      ▼
+      te_cleaning/20260517_3_table_clean_preparation_unknowns_dna.R   ← unknown elements with transposase hits
+      te_cleaning/20260517_4_table_clean_preparation_other_classes.R  ← all non-DNA TE classes
+
+piRNA cluster analysis (independent):
+      data/explore_pirna_cluster/bw_extr.sh                ← extract bedGraphs per cluster per sample
+      pirna_clusters/20260518_pirna_clusters_exploration.R  ← per-base coverage and cluster annotation
 ```
 
 ## Scripts
 
 ### `te_cleaning/20260516_cleaning_DL_yahs_all_pb_rm.R`
-Parses the raw RepeatMasker `.out` file, fixes strand-dependent coordinate columns, and merges piRNA count data (juvenile + ovotestis replicates) per insertion. Collapses overlapping insertions of the same repeat family using `GenomicRanges::reduce()`, summing piRNA counts across merged intervals. Filters to major TE classes (LINE, LTR, DNA, SINE, RC, Unknown). Writes the annotated table to `DL_yahs_all_pb_final.fasta.out.smallrna_annotated.tsv` and an Excel workbook with one sheet per DNA TE family.
+Parses the raw RepeatMasker `.out` file, fixes strand-dependent coordinate columns, and merges piRNA count data (juvenile + ovotestis replicates) per insertion. Collapses overlapping insertions of the same repeat family using `GenomicRanges::reduce()`, summing piRNA counts across merged intervals. Filters to major TE classes (LINE, LTR, DNA, SINE, RC, Unknown). Writes the annotated table and an Excel workbook with one sheet per DNA TE family.
 
 **Output:** `data/DL_yahs_all_pb_final.fasta.out.smallrna_annotated.tsv`, `data/rm_file_smallrna_DNA.xlsx`
 
 ---
 
 ### `te_cleaning/20260516_size_distribution_repsize.R`
-Plots size (width) distributions for all DNA TE families as histograms, one panel per family, saved to a single multi-page PDF. 
+Plots size (width) distributions for all DNA TE families as histograms, one panel per family, saved to a single multi-page PDF.
 
 **Output:** `data/size_distribution_repsize.pdf`
 
@@ -63,11 +70,19 @@ Extracts genomic sequences for all annotated TE insertions using `Biostrings::ge
 
 ---
 
-### `data/blasting_transposase_unknown_tes/run_blastx.sh`
-Builds BLAST databases and runs searches of the nucleotide sequences from the transposable elements against transposase protein `KAK7092566.1`: (we are fishing out elements which have repclass "Unknown" , but are potentially DNA transposons). Later we are adding those to the table with other DNA transposons. 
+### `blast/run_blastx.sh`
+Builds BLAST databases and runs two searches against the hAT transposase protein `KAK7092566.1` to fish out unknown-class elements that are likely DNA transposons:
+- **tBLASTn** — protein query vs nucleotide unknown-TE database
 - **BLASTx** — unknown-TE nucleotide queries vs protein database (all 6 frames, best hit per query)
 
-**Output:**  `blastx_unknowns_vs_KAK7092566.tsv`
+**Output:** `data/blasting_transposase_unknown_tes/tblastn_KAK7092566_vs_unknowns.tsv`, `data/blasting_transposase_unknown_tes/blastx_unknowns_vs_KAK7092566.tsv`
+
+---
+
+### `blast/run_blastx_maverick.sh`
+BLASTx search of unknown-TE nucleotide sequences against a Maverick transposase ORF protein database to identify Maverick/Polinton-class elements among the unknowns.
+
+**Output:** `data/blasting_transposase_unknown_tes/blastx_unknowns_vs_maverick_orf.tsv`
 
 ---
 
@@ -79,14 +94,30 @@ Reads tBLASTn and BLASTx output tables, parses sequence IDs into `repclass`, `re
 ---
 
 ### `te_cleaning/20260517_3_table_clean_preparation_unknowns_dna.R`
-Filters the ORF-annotated table to unknown elements that had transposase BLAST hits. Produces size distribution plots, per-family Excel files, and a combined summary table with the top 5 largest and top 2 ORF-containing elements per family ranked by ovotestis piRNA targeting. Also writes a `repname`/`repclass` lookup CSV covering all DNA and transposase-hit unknown elements.
+Filters the ORF-annotated table to unknown elements that had transposase BLAST hits. Produces size distribution plots, per-family Excel files, and a combined summary table with the top 5 largest and top 2 ORF-containing elements per family ranked by ovotestis piRNA targeting. Also writes a `repname`/`repclass` lookup CSV.
 
 **Output:** `data/size_distribution_repsize_unknowns_dna_transposase.pdf`, `data/unknown_dna_transposons_top5_per_repname_file_smallrna_orf.xlsx`, `data/full_dna_tables/unknown_<repname>_file_smallrna_orf.xlsx`, `data/repname_repclass_dna_unknowns.csv`
 
 ---
 
+### `te_cleaning/20260517_4_table_clean_preparation_other_classes.R`
+Processes all non-DNA TE classes (LINE, LTR, SINE, RC, Unknown). For each class: generates size distribution PDFs (all elements and non-zero-ORF elements only), and creates a summary Excel with the top 5 largest and top 2 ORF-containing elements per family ranked by ovotestis piRNA targeting. Saves per-family Excel files for elements with ORFs. Also produces a single master TSV covering all TE classes combined.
+
+**Output:** `data/<class>_top5_per_repname_file_smallrna_orf.xlsx`, `data/full_<class>_tables/<repname>_file_smallrna_orf.xlsx`, `data/size_distribution_repsize_<class>.pdf`, `data/longest_insertion_size_distribution_<class>.pdf`, `data/all_classes_top5_per_repname_file_smallrna_orf.tsv`
+
+---
+
+### `data/explore_pirna_cluster/bw_extr.sh`
+Loops over all 267 piRNA clusters in `piRNA_clusters_DL_CZ_fixed.sorted.bed` and extracts per-sample bedGraph coverage for each cluster region from the WGS BigWig files. Output is organised into per-cluster subdirectories.
+
+**Output:** `data/explore_pirna_cluster/<cluster_id>/<sample>.bedGraph`
+
+---
+
+### `pirna_clusters/20260518_pirna_clusters_exploration.R`
+Loads per-cluster bedGraph files and annotates them with piRNA cluster coordinates using `foverlaps`. Expands bedGraph intervals to per-base coverage and plots coverage profiles per cluster.
+
+---
+
 ### `te_cleaning/20260517_table_clean_preparation.R`
 General table preparation for DNA transposons — in progress.
-
-### `te_cleaning/20260517_3_table_clean_preparation_other_classes.R`
-Table preparation for non-DNA TE classes — in progress.
