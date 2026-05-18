@@ -1,0 +1,1 @@
+nextflow run /data/scripts/slugsTE/heterozygosity/het_nextflow_pipeline/main.nf --outdir /data2/heterozygosity/othersamples -c /data/scripts/slugsTE/heterozygosity/het_nextflow_pipeline/maxcpu.config --samplesheet /data2/othersamples_samplesheet.csv

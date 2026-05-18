@@ -1,0 +1,8 @@
+sample,assembly,reads
+L633,/data/genomes/Dlaeve_L633_Wein6_Aphallic.p_ctg.fasta,/data/genomes/L633.fastq.gz
+L684,/data/genomes/Dlaeve_L684_Jonathan_Aphallic.p_ctg.fasta,/data/genomes/L684.fastq.gz
+L685,/data/genomes/Dlaeve_L685_Jonathan2_Euphallic.p_ctg.fasta,/data/genomes/L685.fastq.gz
+L691,/data/genomes/Dlaeve_L691_Schlossteich_Euphallic.p_ctg.fasta,/data/genomes/L691.fastq.gz
+L532,/data/genomes/Dlaeve_L532_Jonathan2_Euphallic.p_ctg.fasta,/data/genomes/L532.fastq.gz
+L500,/data/genomes/Dlaeve_L500_Schlossteich7_Euphallic.p_ctg.fasta,/data/genomes/L500.fastq.gz
+L451,/data/genomes/Dlaeve_L451_Glasgow_Aphallic.p_ctg.fasta,/data/genomes/L451.fastq.gz

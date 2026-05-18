@@ -7,8 +7,9 @@ rm_file_with_orfs[,repclass2 := stringr::str_extract(repclass,"^[^/]+")]
 
 ### per class, make a folder and save orf table, subfolder with excels for each separate repname
 
-te <- rm_file_with_orfs[!repclass2 %like% "DNA"]
-te[classname2=="SINE?", classname2:="SINE_"]
+#te <- rm_file_with_orfs[!repclass2 %like% "DNA"]
+te <- rm_file_with_orfs
+te[repclass2=="SINE?", repclass2:="SINE_"]
 
 te[is.na(orf_length),orf_length:=0]
 te <- te[order(repclass2, repclass, repname, -width)]
@@ -120,19 +121,19 @@ maketablesforclass <- function(classname){
   wb <- createWorkbook()
   addWorksheet(wb, sheetName = classname)
   writeData(wb, sheet = classname, te_top)
-  saveWorkbook(wb, paste0("../data/", classname, "_top5_per_repname_file_smallrna_orf.xlsx"), overwrite = TRUE)
+  saveWorkbook(wb, paste0("../data/full_length_tables/", classname, "_top5_per_repname_file_smallrna_orf.xlsx"), overwrite = TRUE)
   # now this table will be manually checked by people.
   # it is uploaded to: 
 
   clean_name <- function(x) substr(gsub("[\\[\\]:*?/\\\\]", "_", x), 1, 31)
 
-  dir.create(paste0("../data/full_", classname, "_tables/"), showWarnings = FALSE)
+  dir.create(paste0("../data/full_length_tables/full_", classname, "_tables/"), showWarnings = FALSE)
   # create and save individual excel files for each repname:
   for (rn in unique(te_top[orf_length_1>0]$repname)) {
     wb <- createWorkbook()
       addWorksheet(wb, sheetName = clean_name(rn))
-      writeData(wb, sheet = clean_name(rn), te_top[repname == rn, ][order(-ovotestis_total_family)])
-      saveWorkbook(wb, paste0("../data/full_", classname, "_tables/", clean_name(rn), "_file_smallrna_orf.xlsx"), overwrite = TRUE)
+      writeData(wb, sheet = clean_name(rn), te[repname == rn, ][order(-orf_length)])
+      saveWorkbook(wb, paste0("../data/full_length_tables/full_", classname, "_tables/", clean_name(rn), "_file_smallrna_orf.xlsx"), overwrite = TRUE)
 
   }
 }
@@ -140,12 +141,6 @@ maketablesforclass <- function(classname){
 te[,.N,repclass2]
 lapply(unique(te$repclass2), maketablesforclass)
 
-maketablesforclass("LINE")
-maketablesforclass("LTR")
-maketablesforclass("SINE")
-maketablesforclass("RC")
-maketablesforclass("Unknown")
-maketablesforclass("SINE?")
 
 
 ### extra: making table for all classes, one mastertable, probably would have been smartter aproach :)
