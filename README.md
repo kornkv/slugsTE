@@ -12,6 +12,8 @@ Analysis of transposable elements (TEs) in *Deroceras laeve* (CZ assembly), inte
 | `data/blasting_transposase_unknown_tes/KAK7092566.1.fasta` | Transposase protein query (hAT superfamily) |
 | `data/blasting_transposase_unknown_tes/maverick_orf_protein.fasta` | Maverick transposase protein query |
 | `data/explore_pirna_cluster/piRNA_clusters_DL_CZ_fixed.sorted.bed` | piRNA cluster coordinates (267 clusters) |
+| `data/explore_pirna_cluster/top20_pirna_clusters_sequences.fasta` | Sequences of the top 20 piRNA clusters |
+| `/data/genomes/*.fasta` | *D. laeve* genome assemblies (11 individuals + reference) |
 
 ## Workflow
 
@@ -45,6 +47,12 @@ te_cleaning/20260516_cleaning_DL_yahs_all_pb_rm.R   ← merge piRNA counts, coll
 piRNA cluster analysis (independent):
       data/explore_pirna_cluster/bw_extr.sh                ← extract bedGraphs per cluster per sample
       pirna_clusters/20260518_pirna_clusters_exploration.R  ← per-base coverage and cluster annotation
+             │
+             ▼
+      pirna_clusters/blastn_pirnas_vs_genomes.nf            ← BLASTn top 20 piRNA clusters vs all genomes (Nextflow)
+             │
+             ▼
+      data/explore_pirna_cluster/blastn_vs_genomes/*.tsv    ← one tabular result file per genome
 ```
 
 ## Scripts
@@ -121,3 +129,14 @@ Loads per-cluster bedGraph files and annotates them with piRNA cluster coordinat
 
 ### `te_cleaning/20260517_table_clean_preparation.R`
 General table preparation for DNA transposons — in progress.
+
+---
+
+### `pirna_clusters/blastn_pirnas_vs_genomes.nf`
+Nextflow DSL2 pipeline that BLASTs the top 20 piRNA cluster sequences against all *D. laeve* genome assemblies in parallel. For each genome it builds a nucleotide BLAST database, then runs `blastn` (e-value ≤ 1e-5, ≥ 60% identity, up to 30 hits per query, 4 threads per job). With a 32-core machine all 11 genomes run 8 at a time, completing in ~1–2 hours. Supports `-resume` to restart from any failed job without rerunning completed ones.
+
+**Run:** `nextflow run blastn_pirnas_vs_genomes.nf` (from `pirna_clusters/`)
+
+**Config:** `pirna_clusters/nextflow.config` — set `executor.cpus` to match available cores
+
+**Output:** `data/explore_pirna_cluster/blastn_vs_genomes/blastn_top20pirnas_vs_<genome>.tsv` — tabular format 6 with columns: `qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen slen qcovs`
