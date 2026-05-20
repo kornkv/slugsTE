@@ -1,7 +1,9 @@
 library(data.table)
 
 # readin the original rm_table with orfs and pirna:
-rm_file_with_orfs <- fread("../data/DL_yahs_all_pb_final.fasta.out.smallrna_annotated_with_orfs.tsv", sep="\t", quote=FALSE)
+# old code uses table with longest orf only, so now read in the new table with two orfs:
+#rm_file_with_orfs <- fread("../data/DL_yahs_all_pb_final.fasta.out.smallrna_annotated_with_orfs.tsv", sep="\t", quote=FALSE)
+rm_file_with_orfs <- fread("../data/DL_yahs_all_pb_final.fasta.out.smallrna_annotated_with_two_orfs.tsv", sep="\t", quote=FALSE)
 rm_file_with_orfs[,repclass2 := stringr::str_extract(repclass,"^[^/]+")]
 
 
@@ -19,6 +21,7 @@ library(ggplot2)
   
 makeplotforclass <- function(classname){
   print(paste0("Making plot for class: ", classname))
+  dir.create(paste0("../data/full_length_tables/plots/"), showWarnings = FALSE, recursive = TRUE)
 
   # subset only to this class:
   tesubset <- te[repclass2==classname]
@@ -53,8 +56,8 @@ makeplotforclass <- function(classname){
     ggtitle("Distribution of longest orf per family - nonzero families")
   
   aa <- list(a,a2,a3,a4)
-  ggsave(paste0("../data/longest_insertion_size_distribution_", classname, ".pdf"), aa, width=10, height=5)  
-  print(paste0("Plot saved: ../data/longest_insertion_size_distribution_", classname,".pdf"))
+  ggsave(paste0("../data/full_length_tables/plots/longest_insertion_size_distribution_", classname, ".pdf"), aa, width=10, height=5)  
+  print(paste0("Plot saved: ../data/full_length_tables/plots/longest_insertion_size_distribution_", classname,".pdf"))
  
   
   # now for each repname in this class, make a histogram of size distribution:
@@ -66,8 +69,8 @@ makeplotforclass <- function(classname){
 
   })
 
-  ggsave(paste0("../data/size_distribution_repsize_", classname, ".pdf"), p, width=10, height=5)
-  print(paste0("Plot saved: ../data/size_distribution_repsize_", classname, ".pdf"))
+  ggsave(paste0("../data/full_length_tables/plots/size_distribution_repsize_", classname, ".pdf"), p, width=10, height=5)
+  print(paste0("Plot saved: ../data/full_length_tables/plots/size_distribution_repsize_", classname, ".pdf"))
   
   
   # now for each repname in this class, make a histogram of size distribution:
@@ -79,9 +82,8 @@ makeplotforclass <- function(classname){
 
   })
   
-
-  ggsave(paste0("../data/size_distribution_repsize_nonzeroorf_", classname, ".pdf"),p2, , width=10, height=5)
-  print(paste0("Plot saved: ../data/size_distribution_repsize_nonzeroorf_", classname, ".pdf"))
+  ggsave(paste0("../data/full_length_tables/plots/size_distribution_repsize_nonzeroorf_", classname, ".pdf"),p2, , width=10, height=5)
+  print(paste0("Plot saved: ../data/full_length_tables/plots/size_distribution_repsize_nonzeroorf_", classname, ".pdf"))
 
 }
 
@@ -95,11 +97,14 @@ maketablesforclass <- function(classname){
   tesubset <- te[repclass2==classname]
   
   # two biggest longorf elements per repname:
+  
   te_toporf <- tesubset[order(-orf_length),.SD[1:2], by=repname]
   te_toporf[,anno_element:=paste0(seqnames,":", start, "-", end)]
   te_toporf[,n:=1:.N, by=repname]
-  
-  ddorf <- dcast(te_toporf, repname~n, value.var=c("anno_element","orf_length"), fill=0)
+  ## NEED TO ADD orflength2
+
+
+  ddorf <- dcast(te_toporf, repname~n, value.var=c("anno_element","orf_length", "orf_length_2"), fill=0)
   
   # and order them by: orf length and targeting in the ovotestis
   te_top <- tesubset[order(-width),.SD[1:5], by=repname]
@@ -151,7 +156,7 @@ lapply(unique(te$repclass2), maketablesforclass)
     te_toporf[,anno_element:=paste0(seqnames,":", start, "-", end)]
     te_toporf[,n:=1:.N, by=.(repclass2,repclass,repname)]
   
-  ddorf <- dcast(te_toporf, repclass2+repclass+repname~n, value.var=c("anno_element","orf_length"), fill=0)
+    ddorf <- dcast(te_toporf, repclass2+repclass+repname~n, value.var=c("anno_element","orf_length", "orf_length_2"), fill=0)
   
   # and order them by: orf length and targeting in the ovotestis
   te_top <- rm_file_with_orfs[order(-width),.SD[1:5], by=.(repclass2,repclass,repname)]

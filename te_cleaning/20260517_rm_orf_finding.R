@@ -5,6 +5,7 @@ BiocManager::install(c("ORFik", "Biostrings", "GenomicRanges", "BSgenome"))
 library(ORFik)
 library(Biostrings)
 library(GenomicRanges)
+library(data.table)
 
 # Load assembled genome (FASTA)
 genome <- readDNAStringSet("../data/Deroceras_laeve_CZ.1.0.fasta")
@@ -16,13 +17,13 @@ dnas <- rm_file[repclass %like% "DNA"]
 
 coords <- GRanges(
   seqnames = dnas$seqnames,
-  ranges   = IRanges(start = dnas$start, end = dnas$end),
-  strand   = dnas$strand
+  ranges   = IRanges(start = dnas$start, end = dnas$end)
+#  strand   = dnas$strand
 )
 coords_all <- GRanges(
   seqnames = rm_file$seqnames,
-  ranges   = IRanges(start = rm_file$start, end = rm_file$end),
-  strand   = rm_file$strand
+  ranges   = IRanges(start = rm_file$start, end = rm_file$end)
+#  strand   = rm_file$strand # we want all orientation orfs
 )
 
 
@@ -47,18 +48,53 @@ orfs <- findORFs(
   minimumLength = 50     # min ORF length in nt
 )
 
-orfs <- as.data.table(unlist(orfs))  # ORFs are returned as a GRangesList, unlist to get a single GRanges
-# Keep only the single longest ORF per input sequence
-longest_orfs <- orfs[,.SD[which.max(width)], by=names]
-setnames(longest_orfs,c("start","end","width"),c("orf_start","orf_end","orf_length")) 
+orfs_multiple <- findORFs(
+  seq_at_coords_all,
+  startCodon   = "ATG",
+  stopCodon    = "TAA|TAG|TGA",
+  longestORF   = FALSE,   # FALSE = multiple ORFs per region
+  minimumLength = 50     # min ORF length in nt
+)
 
+seq_at_coords_all_rc <- reverseComplement(seq_at_coords_all)
+names(seq_at_coords_all_rc) <- names(seq_at_coords_all)
+orfs_multiple_neg <- findORFs(
+  seq_at_coords_all_rc,
+  startCodon   = "ATG",
+  stopCodon    = "TAA|TAG|TGA",
+  longestORF   = FALSE,   # FALSE = multiple ORFs per region
+  minimumLength = 50     # min ORF length in nt
+)
+
+orfs_multiple <- as.data.table(unlist(orfs_multiple))  # ORFs are returned as a GRangesList, unlist to get a single GRanges
+orfs_multiple_neg <- as.data.table(unlist(orfs_multiple_neg))  # ORFs are returned as a GRangesList, unlist to get a single GRanges
+
+orfs <- rbind(orfs_multiple, orfs_multiple_neg)
+
+orfs <- orfs[order(names)]
+orfs[order(-width)][width<5000,.N,names]
+
+
+# Keep only the longest two ORFs per input sequence
+longest_orfs <- orfs[order(-width),.SD[1:2], by=names]
+setnames(longest_orfs,c("start","end","width"),c("orf_start","orf_end","orf_length")) 
+longest_orfs[,n:=1:.N, by=names]
+lo <- dcast(longest_orfs, names~n, value.var=c("orf_start","orf_end","orf_length"), fill=0)
+lo[order(-orf_length_1)]
 # names of the orfs are position of elements in the original list
 
 rm_file[,names:=as.character(1:.N)]
-rm_file_with_orfs <- merge(rm_file, longest_orfs, by="names", all.x=TRUE)
-rm_file_with_orfs
-fwrite(rm_file_with_orfs, "../data/DL_yahs_all_pb_final.fasta.out.smallrna_annotated_with_orfs.tsv", sep="\t", quote=FALSE)
+rm_file_with_orfs <- merge(rm_file, lo, by="names", all.x=TRUE)
+setnames(rm_file_with_orfs, c( "orf_start_1", "orf_end_1", "orf_length_1"), c("orf_start", "orf_end", "orf_length"))
+rm_file_with_orfs[repclass %like% "DNA" ][order(-orf_length)]
 
+
+fwrite(rm_file_with_orfs, "../data/DL_yahs_all_pb_final.fasta.out.smallrna_annotated_with_two_orfs.tsv", sep="\t", quote=FALSE)
+# now go to 20260517_4_table_clean_preparation_other_classes.R to make tables for all classes for two orfs
+
+
+
+# old code uses ../data/DL_yahs_all_pb_final.fasta.out.smallrna_annotated_with_orfs.tsv just longest orf
 #now extract only the DNA 
 dna_only <- rm_file_with_orfs[repclass %like% "DNA"]
 dna_only <- dna_only[order(repname, -width)]
