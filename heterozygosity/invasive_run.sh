@@ -1,0 +1,1 @@
+nextflow run /data/scripts/slugsTE/heterozygosity/het_nextflow_pipeline/main.nf --outdir /data/scripts/slugsTE/data/heterozygosity/invasive -c /data/scripts/slugsTE/heterozygosity/het_nextflow_pipeline/maxcpu.config --samplesheet /data/scripts/slugsTE/heterozygosity/invasive_samplesheet.csv -resume

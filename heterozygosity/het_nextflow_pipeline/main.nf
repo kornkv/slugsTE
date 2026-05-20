@@ -71,7 +71,7 @@ process CALL_VARIANTS {
     bcftools mpileup -f ${ref} -B -Q 20 -q 20 \\
         -a 'FORMAT/AD,FORMAT/DP,INFO/AD' \\
         --threads ${task.cpus} ${bam} \\
-      | bcftools call -m -v --threads ${task.cpus} -Oz -o ${sample}.vcf.gz
+      | bcftools call -m -v --threads ${task.cpus} -Oz -o ${sample}.vcf.gz && \
     bcftools index ${sample}.vcf.gz
     """
 }

@@ -1,0 +1,3 @@
+sample,assembly,reads
+DerInv_3,/data/genomes/Deroceras_invadens_CZ.1.0.fasta,/data/genomes/DerInv_3.hifi_reads.fastq.gz
+I734,/data/genomes/I734.primary.fa,/data/genomes/I734.hifi_reads.fastq.gz
