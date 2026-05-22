@@ -36,6 +36,23 @@ maps_dt <- rbindlist(maps)
 maps_dt
 httpgd::hgd()
 
+# your query coords you want to lift over
+hh
+# maps_dt has: query_name, query_start, query_end, target_name, target_start, target_end
+# find which PAF alignment each query range falls in, then project to target coords
+lifted <- maps_dt[hh, on = .(??_name == contig), allow.cartesian = TRUE][
+    start >= query_start & end <= query_end,
+    .(target_name,
+      target_lifted_start = fifelse(strand == "+",
+        target_start + (start - query_start),
+        target_end   - (end   - query_start)),
+      target_lifted_end = fifelse(strand == "+",
+        target_start + (end   - query_start),
+        target_end   - (start - query_start))
+)
+]
+
+lifted
 
 library(ggplot2)
 
@@ -49,12 +66,19 @@ setkey( maps_dt, file, contig)
 setkey( het_dt, file, contig)
 het_dt <- unique(het_dt)
 mm <- merge(maps_dt, het_dt)
+
+# adding frankfurt
+mm <- rbind(mm, hh[file=="DerLae",.(file, target_name=contig, target_start=start, target_end=end, het_per_100kb)], fill=TRUE)
+
+
 mm[order(target_start)]
 mm[,nm:=stringr::str_remove(stringr::str_remove(query_name, "L\\d+_"),"_ptg\\d+l")]
+mm[is.na(nm), nm := "DerLae_Frankfurt"]
 ggplot(mm[target_name=="scaffold_6"], aes(x=target_start, y=het_per_100kb, color=file)) + 
 geom_segment(aes(x=target_start, xend=target_end, y=het_per_100kb, yend=het_per_100kb), size=2) + 
 facet_wrap(target_name~nm)+
 theme_bw()+ coord_cartesian(ylim=c(-10, 50))
+httpgd::hgd()
 
 # for plot limit to 50:
 mm[het_per_100kb>50, het_per_100kb:=50]
